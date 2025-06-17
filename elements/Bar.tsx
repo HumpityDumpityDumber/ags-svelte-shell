@@ -1,6 +1,7 @@
 import { Astal, Gdk } from "astal/gtk3"
 import WebKit2 from "gi://WebKit2?version=4.1"
 import GtkLayerShell from "gi://GtkLayerShell"
+import { initCava } from "../logic/cava"
 
 export default function Bar(gdkmonitor: Gdk.Monitor) {
     const webview = WebKit2.WebView.new()
@@ -28,6 +29,33 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
             webview.show_all()
 
             webview.load_uri("file:///home/knee/.config/ags/svelte-web/dist/index.html")
+            
+            // Initialize Cava audio visualizer with multiple approaches
+            console.log("Setting up Cava initialization...")
+            
+            // Try immediate initialization (in case load events don't fire)
+            setTimeout(() => {
+                console.log("Attempting immediate Cava initialization...")
+                const webviewWithJS = webview as any
+                initCava(webviewWithJS)
+            }, 1000)
+            
+            // Also try on load-finished signal
+            webview.connect("load-finished", () => {
+                console.log("WebView load finished, initializing Cava...")
+                const webviewWithJS = webview as any
+                initCava(webviewWithJS)
+            })
+            
+            // And try on load-changed signal as backup
+            webview.connect("load-changed", (webview: any, load_event: any) => {
+                console.log("WebView load changed:", load_event)
+                if (load_event === 3) { // WEBKIT_LOAD_FINISHED
+                    console.log("Load finished via load-changed, initializing Cava...")
+                    const webviewWithJS = webview as any
+                    initCava(webviewWithJS)
+                }
+            })
         }}
     />
 }

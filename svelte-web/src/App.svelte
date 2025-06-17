@@ -1,12 +1,8 @@
 <script lang="ts">
   import Clock from './lib/clock.svelte'
-  import Cubes from './lib/threejs/cubes.svelte'
 </script>
 
 <main>
-  <!-- Three.js cubes as background -->
-  <Cubes />
-  
   <div class="left-section">
     <Clock />
   </div>

@@ -6,7 +6,6 @@
 
 <main>
   <div class="left-section">
-    <Workspace />
     <Clock />
   </div>
   
@@ -15,7 +14,7 @@
   </div>
   
   <div class="right-section">
-    <!-- Add right widgets here -->
+    <Workspace />
   </div>
 </main>
 

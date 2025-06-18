@@ -106,6 +106,7 @@
   }
 
   .workspace-number {
-    font-family: 'SF Pro Display', 'Inter', sans-serif;
+    font-family: 'Google Sans Rounded';
+    font-weight: 800;
   }
 </style>

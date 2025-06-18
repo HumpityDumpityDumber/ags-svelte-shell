@@ -72,7 +72,6 @@
     background: rgba(0, 0, 0, 0.2);
     border-radius: 8px;
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .workspace-dot {
@@ -83,7 +82,6 @@
     height: 24px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 11px;
@@ -93,19 +91,16 @@
 
   .workspace-dot:hover {
     background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.3);
     transform: scale(1.1);
   }
 
   .workspace-dot.occupied {
     background: rgba(100, 181, 246, 0.3);
-    border-color: rgba(100, 181, 246, 0.5);
     color: rgba(255, 255, 255, 0.8);
   }
 
   .workspace-dot.active {
     background: rgba(100, 181, 246, 0.8);
-    border-color: rgb(100, 181, 246);
     color: white;
     box-shadow: 0 0 8px rgba(100, 181, 246, 0.4);
   }

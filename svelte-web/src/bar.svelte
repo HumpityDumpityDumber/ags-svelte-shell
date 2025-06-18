@@ -1,10 +1,12 @@
 <script lang="ts">
   import Clock from './lib/clock.svelte'
   import AudioVisualizer from './lib/audiovisual.svelte'
+  import Workspace from './lib/workspace.svelte'
 </script>
 
 <main>
   <div class="left-section">
+    <Workspace />
     <Clock />
   </div>
   

@@ -2,6 +2,7 @@ import { Astal, Gdk } from "astal/gtk3"
 import WebKit2 from "gi://WebKit2?version=4.1"
 import GtkLayerShell from "gi://GtkLayerShell"
 import { initCava } from "../logic/cava"
+import { initNiriWorkspaces } from "../logic/niri-ws"
 
 export default function Bar(gdkmonitor: Gdk.Monitor) {
     const webview = WebKit2.WebView.new()
@@ -28,16 +29,23 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
             self.add(webview)
             webview.show_all()
 
-            webview.load_uri("file:///home/knee/.config/ags/svelte-web/dist/index.html")
+            webview.load_uri(`file:///home/knee/.config/ags/svelte-web/dist/index.html?monitor=${encodeURIComponent(gdkmonitor.get_model() || "unknown")}`)
             
             // Initialize Cava audio visualizer with multiple approaches
             console.log("Setting up Cava initialization...")
+            
+            // Get monitor name for workspace filtering
+            const monitorName = gdkmonitor.get_model() || gdkmonitor.get_manufacturer() + " " + gdkmonitor.get_model()
+            console.log("Monitor name for workspace filtering:", monitorName)
             
             // Try immediate initialization (in case load events don't fire)
             setTimeout(() => {
                 console.log("Attempting immediate Cava initialization...")
                 const webviewWithJS = webview as any
                 initCava(webviewWithJS)
+                
+                console.log("Initializing Niri workspaces for monitor:", monitorName)
+                initNiriWorkspaces(webviewWithJS, monitorName)
             }, 1000)
             
             // Also try on load-finished signal
@@ -45,6 +53,9 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
                 console.log("WebView load finished, initializing Cava...")
                 const webviewWithJS = webview as any
                 initCava(webviewWithJS)
+                
+                console.log("WebView load finished, initializing Niri workspaces for monitor:", monitorName)
+                initNiriWorkspaces(webviewWithJS, monitorName)
             })
             
             // And try on load-changed signal as backup
@@ -54,6 +65,9 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
                     console.log("Load finished via load-changed, initializing Cava...")
                     const webviewWithJS = webview as any
                     initCava(webviewWithJS)
+                    
+                    console.log("Load finished via load-changed, initializing Niri workspaces for monitor:", monitorName)
+                    initNiriWorkspaces(webviewWithJS, monitorName)
                 }
             })
         }}

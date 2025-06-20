@@ -1,5 +1,4 @@
 import { App, Gdk, Gtk } from "astal/gtk3"
-import { subprocess } from "astal/process"
 import Bar from "./elements/Bar"
 
 function main() {

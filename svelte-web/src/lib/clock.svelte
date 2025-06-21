@@ -33,7 +33,13 @@
     font-weight: 800;
     text-align: center;
     margin: 0;
-    padding: 10px;
+    padding: 0 0 0 10px;
     color: #c2c2c2;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    line-height: 1;
+    box-sizing: border-box;
   }
 </style>

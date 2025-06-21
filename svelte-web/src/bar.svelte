@@ -5,12 +5,13 @@
 </script>
 
 <main>
+  <!-- Full-screen audio visualizer background -->
+  <div class="audio-background">
+    <AudioVisualizer />
+  </div>
+
   <div class="left-section">
     <Clock />
-  </div>
-  
-  <div class="center-section">
-    <AudioVisualizer />
   </div>
   
   <div class="right-section">
@@ -22,37 +23,43 @@
   :global(html, body) {
     margin: 0;
     padding: 0;
-    height: 35px;
+    height: 60px;
     overflow: hidden;
     background-color: transparent;
   }
 
   main {
     position: relative;
-    height: 35px;
+    height: 60px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     width: 100%;
   }
 
-  .left-section {
+  .audio-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
+    justify-content: center;
+  }
+
+  .left-section {
+    display: flex;
+    align-items: flex-start;
     flex: 1;
     justify-content: flex-start;
     padding-left: 10px;
     z-index: 10;
     position: relative;
-  }
-
-  .center-section {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    z-index: 10;
-    position: relative;
+    height: 25px;
   }
 
   .right-section {

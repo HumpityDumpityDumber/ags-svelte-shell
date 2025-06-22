@@ -43,7 +43,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
         heightRequest={60}
         keymode={Astal.Keymode.ON_DEMAND}
         setup={async (self: any) => {
-            GtkLayerShell.set_exclusive_zone(self, 45)
+            GtkLayerShell.set_exclusive_zone(self, 35)
             self.set_can_focus(true)
             self.set_accept_focus(true)
             self.add(webview)

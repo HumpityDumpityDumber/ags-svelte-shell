@@ -60,6 +60,7 @@
     z-index: 10;
     position: relative;
     height: 25px;
+    margin-top: 5px;
   }
 
   .right-section {
@@ -70,5 +71,6 @@
     padding-right: 10px;
     z-index: 10;
     position: relative;
+    margin-top: 15px;
   }
 </style>

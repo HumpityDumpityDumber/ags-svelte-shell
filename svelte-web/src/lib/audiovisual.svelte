@@ -1,14 +1,16 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
 
-  let audioValues: number[] = new Array(16).fill(0.1); // 16 points (8 cava bands repeated twice)
+  let audioValues: number[] = new Array(15).fill(0.1); // 15 points for mirrored pattern
   let isActive = false;
   let mounted = false;
   let splinePath = '';
   let gradientStops: Array<{offset: string, color: string}> = [];
   let intensity = 0; // Overall audio intensity
   let peakValue = 0; // Current peak value
-  let smoothedValues: number[] = new Array(16).fill(0.1); // Smoothed values for less jitter
+  let smoothedValues: number[] = new Array(15).fill(0.1); // Smoothed values for less jitter
+  let animationTime = 0; // Time for idle wave animation
+  let animationFrameId: number | null = null; // Animation frame ID for cleanup
 
   // Function to create dramatic curved spline from audio values
   function createSplinePath(values: number[], width: number, height: number): string {
@@ -45,23 +47,66 @@
     return path;
   }
 
-  // Function to create dynamic gradient based on audio activity
+  // Function to create idle wave animation
+  function createIdleWave(time: number, width: number, height: number): number[] {
+    const waveValues: number[] = [];
+    const frequency = 0.002; // Wave frequency
+    const amplitude = 0.15; // Wave amplitude (subtle)
+    const baseHeight = 0.1; // Base height when idle
+    
+    for (let i = 0; i < 15; i++) {
+      const x = (i / 14) * width; // Normalize position across width
+      const wave = Math.sin(time * frequency + x * 0.01) * amplitude + baseHeight;
+      waveValues.push(Math.max(0.05, wave)); // Ensure minimum height
+    }
+    
+    return waveValues;
+  }
+
+  // Function to animate idle state
+  function animateIdleWave() {
+    if (!mounted) return;
+    
+    animationTime += 16; // Increment by ~16ms for 60fps
+    
+    if (!isActive) {
+      // Create idle wave when not receiving audio data
+      const idleValues = createIdleWave(animationTime, window.innerWidth || 800, 60);
+      const screenWidth = window.innerWidth || 800;
+      splinePath = createSplinePath(idleValues, screenWidth, 60);
+      updateGradient(idleValues);
+    }
+    
+    animationFrameId = requestAnimationFrame(animateIdleWave);
+  }
   function updateGradient(values: number[]) {
     const maxValue = Math.max(...values);
     const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
     
-    // More dramatic color shifts based on audio
-    const hueShift = maxValue * 120; // Wider hue range
-    const saturation = 70 + (avgValue * 30); // Dynamic saturation
-    const lightness = 45 + (intensity * 35); // Brightness based on overall intensity
-    
-    gradientStops = [
-      { offset: '0%', color: `hsl(${180 + hueShift}, ${saturation}%, ${lightness}%)` },
-      { offset: '25%', color: `hsl(${220 + hueShift * 0.8}, ${saturation + 10}%, ${lightness + 10}%)` },
-      { offset: '50%', color: `hsl(${260 + hueShift * 0.6}, ${saturation + 5}%, ${lightness + 5}%)` },
-      { offset: '75%', color: `hsl(${200 + hueShift * 1.2}, ${saturation + 15}%, ${lightness + 15}%)` },
-      { offset: '100%', color: `hsl(${160 + hueShift * 1.4}, ${saturation + 20}%, ${lightness + 20}%)` }
-    ];
+    if (!isActive) {
+      // Subtle, calming colors for idle state
+      const timeBasedHue = (animationTime * 0.05) % 360; // Slowly cycling hue
+      gradientStops = [
+        { offset: '0%', color: `hsl(${timeBasedHue}, 40%, 35%)` },
+        { offset: '25%', color: `hsl(${timeBasedHue + 30}, 45%, 40%)` },
+        { offset: '50%', color: `hsl(${timeBasedHue + 60}, 50%, 45%)` },
+        { offset: '75%', color: `hsl(${timeBasedHue + 30}, 45%, 40%)` },
+        { offset: '100%', color: `hsl(${timeBasedHue}, 40%, 35%)` }
+      ];
+    } else {
+      // More dramatic color shifts based on audio
+      const hueShift = maxValue * 120; // Wider hue range
+      const saturation = 70 + (avgValue * 30); // Dynamic saturation
+      const lightness = 45 + (intensity * 35); // Brightness based on overall intensity
+      
+      gradientStops = [
+        { offset: '0%', color: `hsl(${180 + hueShift}, ${saturation}%, ${lightness}%)` },
+        { offset: '25%', color: `hsl(${220 + hueShift * 0.8}, ${saturation + 10}%, ${lightness + 10}%)` },
+        { offset: '50%', color: `hsl(${260 + hueShift * 0.6}, ${saturation + 5}%, ${lightness + 5}%)` },
+        { offset: '75%', color: `hsl(${200 + hueShift * 1.2}, ${saturation + 15}%, ${lightness + 15}%)` },
+        { offset: '100%', color: `hsl(${160 + hueShift * 1.4}, ${saturation + 20}%, ${lightness + 20}%)` }
+      ];
+    }
   }
 
   // Function to handle audio updates from Astal
@@ -74,21 +119,89 @@
     peakValue = peakValue * 0.7 + currentPeak * 0.3;
     intensity = intensity * 0.8 + currentAvg * 0.2;
     
-    // Use cava values in repeating pattern: 1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8
+    // Create mirrored pattern: 8,7,6,5,4,3,2,1,2,3,4,5,6,7,8
     if (values.length === 8) {
-      // Create 16 points by repeating the 8 cava bands twice
-      audioValues = [];
-      for (let cycle = 0; cycle < 2; cycle++) {
-        for (let i = 0; i < 8; i++) {
-          audioValues.push(values[i]);
-        }
+      audioValues = [
+        values[7], // Band 8
+        values[6], // Band 7
+        values[5], // Band 6
+        values[4], // Band 5
+        values[3], // Band 4
+        values[2], // Band 3
+        values[1], // Band 2
+        values[0], // Band 1
+        values[1], // Band 2
+        values[2], // Band 3
+        values[3], // Band 4
+        values[4], // Band 5
+        values[5], // Band 6
+        values[6], // Band 7
+        values[7]  // Band 8
+      ];
+      
+      // Debug: Log the mirrored pattern occasionally for verification
+      if (Math.random() < 0.01) { // Log ~1% of the time to avoid spam
+        console.log('Mirrored cava pattern:', [
+          `8(${values[7].toFixed(2)})`,
+          `7(${values[6].toFixed(2)})`, 
+          `6(${values[5].toFixed(2)})`,
+          `5(${values[4].toFixed(2)})`,
+          `4(${values[3].toFixed(2)})`,
+          `3(${values[2].toFixed(2)})`,
+          `2(${values[1].toFixed(2)})`,
+          `1(${values[0].toFixed(2)})`,
+          `2(${values[1].toFixed(2)})`,
+          `3(${values[2].toFixed(2)})`,
+          `4(${values[3].toFixed(2)})`,
+          `5(${values[4].toFixed(2)})`,
+          `6(${values[5].toFixed(2)})`,
+          `7(${values[6].toFixed(2)})`,
+          `8(${values[7].toFixed(2)})`
+        ].join(' '));
       }
+      
+      // Debug: Log the mirrored pattern for verification
+      console.log('Mirrored cava pattern:', [
+        `8(${values[7].toFixed(2)})`,
+        `7(${values[6].toFixed(2)})`, 
+        `6(${values[5].toFixed(2)})`,
+        `5(${values[4].toFixed(2)})`,
+        `4(${values[3].toFixed(2)})`,
+        `3(${values[2].toFixed(2)})`,
+        `2(${values[1].toFixed(2)})`,
+        `1(${values[0].toFixed(2)})`,
+        `2(${values[1].toFixed(2)})`,
+        `3(${values[2].toFixed(2)})`,
+        `4(${values[3].toFixed(2)})`,
+        `5(${values[4].toFixed(2)})`,
+        `6(${values[5].toFixed(2)})`,
+        `7(${values[6].toFixed(2)})`,
+        `8(${values[7].toFixed(2)})`
+      ].join(' '));
     } else {
-      // Fallback: if not 8 values, pad or truncate to exactly 16
-      audioValues = new Array(16).fill(0);
-      for (let i = 0; i < Math.min(16, values.length); i++) {
-        audioValues[i] = values[i % values.length];
+      // Fallback: if not 8 values, create mirrored pattern from available data
+      const normalizedValues = new Array(8).fill(0);
+      for (let i = 0; i < Math.min(8, values.length); i++) {
+        normalizedValues[i] = values[i];
       }
+      
+      audioValues = [
+        normalizedValues[7], // Band 8
+        normalizedValues[6], // Band 7
+        normalizedValues[5], // Band 6
+        normalizedValues[4], // Band 5
+        normalizedValues[3], // Band 4
+        normalizedValues[2], // Band 3
+        normalizedValues[1], // Band 2
+        normalizedValues[0], // Band 1
+        normalizedValues[1], // Band 2
+        normalizedValues[2], // Band 3
+        normalizedValues[3], // Band 4
+        normalizedValues[4], // Band 5
+        normalizedValues[5], // Band 6
+        normalizedValues[6], // Band 7
+        normalizedValues[7]  // Band 8
+      ];
     }
     
     // Apply almost no smoothing for maximum responsiveness
@@ -112,6 +225,9 @@
     splinePath = createSplinePath(smoothedValues, window.innerWidth || 800, 60);
     updateGradient(smoothedValues);
     
+    // Start the idle wave animation
+    animateIdleWave();
+    
     // Register the audio update handler
     if (typeof window !== 'undefined') {
       (window as any).updateAudioVisualization = handleAudioUpdate;
@@ -127,7 +243,13 @@
   });
 
   onDestroy(() => {
-    // Clean up
+    // Clean up animation frame
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
+    
+    // Clean up global handlers
     if (typeof window !== 'undefined') {
       (window as any).updateAudioVisualization = null;
       console.log('Audio visualizer component destroyed');
@@ -181,7 +303,7 @@
     align-items: center;
     justify-content: center;
     transition: opacity 0.3s ease;
-    opacity: 0.7;
+    opacity: 0.6; /* Slightly more visible when idle */
     position: absolute;
     top: 0;
     left: 0;
@@ -190,7 +312,7 @@
   }
 
   .audio-visualizer.mounted {
-    opacity: 0.8;
+    opacity: 0.7; /* Slightly more visible when mounted */
   }
 
   .audio-visualizer.active {
@@ -222,7 +344,7 @@
   }
 
   .spline-line {
-    transition: stroke-width 0.2s ease;
+    transition: stroke-width 0.2s ease, stroke 0.3s ease;
     stroke-linecap: round;
     stroke-linejoin: round;
   }

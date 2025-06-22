@@ -46,6 +46,7 @@ export class NiriWorkspaceManager {
     private workspaces: Map<number, NiriWorkspace> = new Map()
     private webviews: Map<string, WebView> = new Map()
     private monitorOutputMapping: Map<string, string> = new Map() // monitor -> output
+    private persistentMonitorMapping: Map<string, string> = new Map() // Persistent mapping that survives hotplug
     private eventStreamProcess: any = null
     private isActive = false
 
@@ -73,8 +74,9 @@ export class NiriWorkspaceManager {
         console.log(`Registering WebView for monitor: ${monitorId}`)
         this.webviews.set(monitorId, webview)
         
-        // Try to establish monitor -> output mapping
+        // Try to establish monitor -> output mapping with persistence
         this.establishMonitorOutputMapping(monitorId)
+        this.logMappingState()
         
         // Send current workspace state to the newly registered WebView
         this.sendWorkspaceDataToMonitor(monitorId)
@@ -86,6 +88,7 @@ export class NiriWorkspaceManager {
     unregisterWebView(monitorId: string): void {
         console.log(`Unregistering WebView for monitor: ${monitorId}`)
         this.webviews.delete(monitorId)
+        // Do NOT delete from persistentMonitorMapping - keep it for when monitor returns
         this.monitorOutputMapping.delete(monitorId)
     }
 
@@ -156,6 +159,7 @@ export class NiriWorkspaceManager {
         this.webviews.forEach((webview, monitorId) => {
             this.establishMonitorOutputMapping(monitorId)
         })
+        this.logMappingState()
 
         // Send updates to all monitors
         this.sendWorkspaceDataToAllMonitors()
@@ -297,6 +301,7 @@ export class NiriWorkspaceManager {
         this.workspaces.clear()
         this.webviews.clear()
         this.monitorOutputMapping.clear()
+        // Note: We intentionally keep persistentMonitorMapping for next session
         console.log("Niri workspace manager destroyed")
     }
 
@@ -340,9 +345,18 @@ export class NiriWorkspaceManager {
         console.log(`Establishing mapping for monitor "${monitorId}"`)
         console.log(`Available outputs:`, availableOutputs)
         
+        // First check if we have a persistent mapping for this monitor
+        const persistentMapping = this.persistentMonitorMapping.get(monitorId)
+        if (persistentMapping && availableOutputs.includes(persistentMapping)) {
+            this.monitorOutputMapping.set(monitorId, persistentMapping)
+            console.log(`Using persistent mapping: ${monitorId} -> ${persistentMapping}`)
+            return
+        }
+        
         // Direct match first
         if (availableOutputs.includes(monitorId)) {
             this.monitorOutputMapping.set(monitorId, monitorId)
+            this.persistentMonitorMapping.set(monitorId, monitorId)
             console.log(`Direct match: ${monitorId} -> ${monitorId}`)
             return
         }
@@ -351,28 +365,50 @@ export class NiriWorkspaceManager {
         for (const output of availableOutputs) {
             if (monitorId.includes(output) || output.includes(monitorId)) {
                 this.monitorOutputMapping.set(monitorId, output)
+                this.persistentMonitorMapping.set(monitorId, output)
                 console.log(`Fuzzy match: ${monitorId} -> ${output}`)
                 return
             }
         }
         
-        // Smart assignment for dual monitor setups
+        // For dual monitor setups, check if we can use existing persistent mappings to avoid conflicts
         if (availableOutputs.length === 2 && this.webviews.size <= 2) {
-            // Sort outputs for consistent assignment
-            const sortedOutputs = availableOutputs.sort()
-            const monitorKeys = Array.from(this.webviews.keys()).sort()
-            const monitorIndex = monitorKeys.indexOf(monitorId)
+            // Find which outputs are already claimed by other active monitors
+            const claimedOutputs = new Set<string>()
+            this.monitorOutputMapping.forEach((output, monitor) => {
+                if (monitor !== monitorId && this.webviews.has(monitor)) {
+                    claimedOutputs.add(output)
+                }
+            })
             
-            if (monitorIndex >= 0 && monitorIndex < sortedOutputs.length) {
-                this.monitorOutputMapping.set(monitorId, sortedOutputs[monitorIndex])
-                console.log(`Smart dual-monitor assignment: ${monitorId} -> ${sortedOutputs[monitorIndex]}`)
+            // Find an unclaimed output
+            const unclaimedOutput = availableOutputs.find(output => !claimedOutputs.has(output))
+            if (unclaimedOutput) {
+                this.monitorOutputMapping.set(monitorId, unclaimedOutput)
+                this.persistentMonitorMapping.set(monitorId, unclaimedOutput)
+                console.log(`Dual-monitor unclaimed assignment: ${monitorId} -> ${unclaimedOutput}`)
                 return
+            }
+            
+            // Fallback to sorted assignment only if no persistent mappings exist
+            if (this.persistentMonitorMapping.size === 0) {
+                const sortedOutputs = availableOutputs.sort()
+                const monitorKeys = Array.from(this.webviews.keys()).sort()
+                const monitorIndex = monitorKeys.indexOf(monitorId)
+                
+                if (monitorIndex >= 0 && monitorIndex < sortedOutputs.length) {
+                    this.monitorOutputMapping.set(monitorId, sortedOutputs[monitorIndex])
+                    this.persistentMonitorMapping.set(monitorId, sortedOutputs[monitorIndex])
+                    console.log(`Smart dual-monitor assignment: ${monitorId} -> ${sortedOutputs[monitorIndex]}`)
+                    return
+                }
             }
         }
         
         // If only one output available, use it
         if (availableOutputs.length === 1) {
             this.monitorOutputMapping.set(monitorId, availableOutputs[0])
+            this.persistentMonitorMapping.set(monitorId, availableOutputs[0])
             console.log(`Single output mapping: ${monitorId} -> ${availableOutputs[0]}`)
             return
         }
@@ -407,6 +443,18 @@ export class NiriWorkspaceManager {
         }
         
         return false
+    }
+
+    /**
+     * Debug method to log current mapping state
+     */
+    private logMappingState(): void {
+        console.log("=== Mapping State Debug ===")
+        console.log("Active WebViews:", Array.from(this.webviews.keys()))
+        console.log("Available Outputs:", Array.from(new Set(Array.from(this.workspaces.values()).map(ws => ws.output))))
+        console.log("Current Mappings:", Object.fromEntries(this.monitorOutputMapping))
+        console.log("Persistent Mappings:", Object.fromEntries(this.persistentMonitorMapping))
+        console.log("===========================")
     }
 }
 

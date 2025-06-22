@@ -24,7 +24,9 @@
     // Register global function for receiving workspace updates from Astal
     window.updateWorkspacesFromAstal = (newWorkspaces: NiriWorkspace[]) => {
       console.log('Received workspace update:', newWorkspaces)
+      console.log('Current workspaces before update:', workspaces)
       workspaces = newWorkspaces
+      console.log('Current workspaces after update:', workspaces)
     }
   })
 
@@ -64,6 +66,7 @@
       role="button"
       tabindex="0"
       title="Workspace {workspace.idx}"
+      style="--workspace-offset: {(workspace.idx - 1) * 51}deg"
     >
       <span class="workspace-number">{workspace.idx}</span>
     </div>

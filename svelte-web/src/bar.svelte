@@ -15,7 +15,6 @@
   </div>
   
   <div class="right-section">
-    <Workspace />
   </div>
 </main>
 

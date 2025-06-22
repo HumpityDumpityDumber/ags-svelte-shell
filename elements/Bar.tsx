@@ -2,7 +2,6 @@ import { Astal, Gdk, App } from "astal/gtk3"
 import WebKit2 from "gi://WebKit2?version=4.1"
 import GtkLayerShell from "gi://GtkLayerShell"
 import { initCava } from "../logic/cava"
-import { initNiriWorkspaces, cleanupNiriWorkspaces, switchWorkspace } from "../logic/niri-ws"
 
 export default function Bar(gdkmonitor: Gdk.Monitor) {
     const webview = WebKit2.WebView.new()
@@ -51,37 +50,19 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
 
             webview.load_uri(`file:///home/knee/.config/ags/svelte-web/dist/index.html?monitor=${encodeURIComponent(monitorId)}`)
             
-            // Initialize Cava audio visualizer and Niri workspaces
-            console.log("Setting up Cava and Niri workspace initialization...")
+            // Initialize Cava audio visualizer
+            console.log("Setting up Cava initialization...")
             
             // And try on load-changed signal as backup
             webview.connect("load-changed", (webview: any, load_event: any) => {
                 console.log("WebView load changed:", load_event)
                 if (load_event === 3) { // WEBKIT_LOAD_FINISHED
-                    console.log("Load finished via load-changed, initializing Cava and Niri workspaces...")
+                    console.log("Load finished via load-changed, initializing Cava...")
                     const webviewWithJS = webview as any
                     
-                    // Inject simple workspace switching function
-                    const switchFunctionJs = `
-                        window.switchNiriWorkspace = async (workspaceId) => {
-                            console.log('Workspace switch requested for ID:', workspaceId);
-                            // For now, just log the request
-                            // TODO: Implement actual IPC communication
-                            return Promise.resolve();
-                        };
-                    `
-                    webviewWithJS.run_javascript(switchFunctionJs, null, null)
-                    
-                    // Initialize other services
+                    // Initialize Cava
                     initCava(webviewWithJS)
-                    initNiriWorkspaces(webviewWithJS, monitorId)
                 }
-            })
-
-            // Setup cleanup on window destroy
-            self.connect("destroy", () => {
-                console.log(`Cleaning up Bar for monitor: ${monitorId}`)
-                cleanupNiriWorkspaces(monitorId)
             })
         }}
     />

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Clock from './lib/clock.svelte'
   import AudioVisualizer from './lib/audiovisual.svelte'
+  import Controller from './lib/controller.svelte'
 </script>
 
 <main>
@@ -14,6 +15,7 @@
   </div>
   
   <div class="right-section">
+    <Controller />
   </div>
 </main>
 

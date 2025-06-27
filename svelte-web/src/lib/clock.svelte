@@ -34,7 +34,7 @@
     text-align: center;
     margin: 0;
     padding: 0 0 0 10px;
-    color: #c2c2c2;
+    color: #e9d9b0;
     height: 25px;
     display: flex;
     align-items: center;

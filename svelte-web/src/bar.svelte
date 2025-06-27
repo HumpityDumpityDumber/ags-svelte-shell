@@ -71,6 +71,6 @@
     padding-right: 10px;
     z-index: 10;
     position: relative;
-    margin-top: 15px;
+    margin-top: 5px;
   }
 </style>

@@ -5,6 +5,7 @@
   let isActive = false;
   let mounted = false;
   let splinePath = '';
+  let fillPath = ''; // Add this line
   let gradientStops: Array<{offset: string, color: string}> = [];
   let intensity = 0; // Overall audio intensity
   let peakValue = 0; // Current peak value
@@ -47,6 +48,32 @@
     return path;
   }
 
+  // Function to create a closed fill path from the top of the SVG to the spline line
+  function createFillPath(values: number[], width: number, height: number): string {
+    if (values.length === 0) return '';
+    const points: Array<{x: number, y: number}> = [];
+    const segmentWidth = width / (values.length - 1);
+
+    values.forEach((value, index) => {
+      const x = index * segmentWidth;
+      const rawY = 25 + (value * (height - 25) * 1.0);
+      const y = Math.min(rawY, 58);
+      points.push({ x, y });
+    });
+
+    let path = `M 0 0 L ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const controlDistance = (curr.x - prev.x) * 0.2;
+      const cp1x = prev.x + controlDistance;
+      const cp1y = prev.y;
+      path += ` Q ${cp1x} ${cp1y} ${curr.x} ${curr.y}`;
+    }
+    path += ` L ${points[points.length - 1].x} 0 L 0 0 Z`;
+    return path;
+  }
+
   // Function to create idle wave animation
   function createIdleWave(time: number, width: number, height: number): number[] {
     const waveValues: number[] = [];
@@ -74,6 +101,7 @@
       const idleValues = createIdleWave(animationTime, window.innerWidth || 800, 60);
       const screenWidth = window.innerWidth || 800;
       splinePath = createSplinePath(idleValues, screenWidth, 60);
+      fillPath = createFillPath(idleValues, screenWidth, 60); // Add this line
       updateGradient(idleValues);
     }
     
@@ -214,6 +242,7 @@
     
     const screenWidth = window.innerWidth || 800;
     splinePath = createSplinePath(smoothedValues, screenWidth, 60);
+    fillPath = createFillPath(smoothedValues, screenWidth, 60); // Add this line
     updateGradient(smoothedValues);
   }
 
@@ -223,6 +252,7 @@
     
     // Initialize the spline path with screen width
     splinePath = createSplinePath(smoothedValues, window.innerWidth || 800, 60);
+    fillPath = createFillPath(smoothedValues, window.innerWidth || 800, 60); // Add this line
     updateGradient(smoothedValues);
     
     // Start the idle wave animation
@@ -265,6 +295,11 @@
           <stop offset={stop.offset} style="stop-color:{stop.color};stop-opacity:{0.6 + intensity * 0.4}" />
         {/each}
       </linearGradient>
+      <linearGradient id="fillGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+        {#each gradientStops as stop}
+          <stop offset={stop.offset} style="stop-color:{stop.color};stop-opacity:0.18" />
+        {/each}
+      </linearGradient>
       <filter id="glow">
         <feGaussianBlur stdDeviation="{1 + intensity * 2}" result="coloredBlur"/>
         <feMerge> 
@@ -281,20 +316,30 @@
       </filter>
     </defs>
     
+    <!-- Fill under the spline line -->
+    {#if fillPath}
+      <path
+        d={fillPath}
+        fill="url(#fillGradient)"
+        stroke="none"
+        class="spline-fill"
+        style="mix-blend-mode: lighten; opacity: 0.7;"
+      />
+    {/if}
+
     <!-- Main spline line -->
     {#if splinePath}
       <path 
-        d="{splinePath}" 
+        d={splinePath} 
         fill="none" 
         stroke="url(#splineGradient)" 
-        stroke-width="{1.5 + intensity * 2 + peakValue * 1.5}" 
+        stroke-width="{6 + intensity * 8 + peakValue * 6}" 
         filter="{peakValue > 0.5 ? 'url(#intenseglow)' : 'url(#glow)'}"
         class="spline-line"
       />
     {/if}
   </svg>
 </div>
-
 <style>
   .audio-visualizer {
     width: 100%;
@@ -341,6 +386,13 @@
     height: 100%;
     overflow: visible;
     filter: drop-shadow(0 0 4px rgba(74, 158, 255, 0.1));
+  }
+
+  .spline-fill {
+    pointer-events: none;
+    transition: fill-opacity 0.3s;
+    /* Optional: add blur or glow if desired */
+    /* filter: blur(1px); */
   }
 
   .spline-line {
